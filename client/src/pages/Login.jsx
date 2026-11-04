@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { Eye, EyeOff, ShoppingCart, Mail, Lock, User } from 'lucide-react'
 import toast from "react-hot-toast"
 import {  useNavigate } from 'react-router-dom'
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 
 const Login = ({getUser}) => {
   const initialData = {
@@ -11,8 +13,11 @@ const Login = ({getUser}) => {
   
   const [formData,setFormData] = useState(initialData)
   const [loading,setLoading] = useState(false)
+  const [googleLoading,setGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const googleConfigured = googleClientId && !googleClientId.startsWith('replace-')
 
   const handleChange = (e) => {
     const {name,value} = e.target;
@@ -20,6 +25,37 @@ const Login = ({getUser}) => {
       ...formData,
       [name]:value
     })
+  }
+
+  const handleGoogleSuccess = async ({ credential }) => {
+    if (!credential) {
+      toast.error('Google did not return a sign-in credential.')
+      return
+    }
+
+    try {
+      setGoogleLoading(true)
+      const res = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credential })
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        toast.error(data.message || 'Google sign-in failed.')
+        return
+      }
+
+      await getUser()
+      toast.success(data.message)
+      navigate('/')
+    } catch (error) {
+      toast.error(error.message || 'Google sign-in failed.')
+    } finally {
+      setGoogleLoading(false)
+    }
   }
 
    const handleSubmit = async(e) =>{
@@ -73,6 +109,53 @@ const Login = ({getUser}) => {
             </div>
             <h1 className='text-3xl font-bold  mb-2'>Welcome Back!</h1>
             <p>Sign in to your shopping account</p>
+          </div>
+
+          <div className='mb-6 flex flex-col items-center gap-3'>
+            {googleConfigured ? (
+              <GoogleOAuthProvider clientId={googleClientId}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google sign-in failed. Please try again.')}
+                  useOneTap={false}
+                  text="continue_with"
+                  shape="rectangular"
+                  width="340"
+                />
+              </GoogleOAuthProvider>
+            ) : (
+              <div
+                className="w-full"
+                title="Google sign-in is unavailable until both app environment files have the same Google OAuth Web client ID."
+                aria-describedby="google-signin-help"
+              >
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 font-medium text-gray-500 disabled:cursor-not-allowed"
+                >
+                  Continue with Google
+                </button>
+              </div>
+            )}
+            {googleConfigured && googleLoading && (
+              <span className="text-sm text-gray-500">Signing in with Google...</span>
+            )}
+            {!googleConfigured && (
+              <p id="google-signin-help" className="max-w-sm text-center text-xs leading-relaxed text-gray-600">
+                Google sign-in is unavailable because its client ID is not configured.
+                Add your Google OAuth Web client ID to <code>client/.env</code> as
+                {' '}<code>VITE_GOOGLE_CLIENT_ID</code> and <code>server/.env</code> as
+                {' '}<code>GOOGLE_CLIENT_ID</code>, then restart both apps. The client ID
+                must also allow this site&apos;s origin.
+              </p>
+            )}
+          </div>
+
+          <div className='mb-6 flex items-center'>
+            <div className='flex-1 border-t border-white/20'></div>
+            <span className='px-4 text-sm text-gray-500'>or continue with email</span>
+            <div className='flex-1 border-t border-white/20'></div>
           </div>
 
           {/* Form */}
@@ -147,7 +230,7 @@ const Login = ({getUser}) => {
           {/* Register Link */}
           <div className='text-center'>
             <p className='-300'>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <button 
                 className='text-blue-600 hover:text-blue-800 font-semibold transition-colors duration-300 hover:underline'
                 onClick={() => navigate("/register")}
@@ -164,6 +247,10 @@ const Login = ({getUser}) => {
       </div>
     </div>
   )
+}
+
+Login.propTypes = {
+  getUser: PropTypes.func.isRequired
 }
 
 export default Login

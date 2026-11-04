@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Product from '../components/Product';
 import Loader from '../components/Loader';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
 
   const [active,setActive] = useState(0)
   const categories = [
+  "All",
   "beauty",
   "fragrances",
   "furniture",
@@ -33,7 +33,6 @@ const Products = () => {
   };
 
   const handleClick = (category,index) => {
-    setCategory(category);
     setActive(index)
     if (category === "All") {
       setFilteredProducts(products);

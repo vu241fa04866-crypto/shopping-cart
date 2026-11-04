@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -21,17 +21,18 @@ import Success from './pages/Success'
 const App = () => {
   const dispatch = useDispatch()
   const [isDarkMode,setIsDarkMode] = useState(false)
-  const getUser = () => {
-    getUserFromServer().then((data) => {
+  const getUser = useCallback(() => {
+    return getUserFromServer().then((data) => {
       if (data.success) {
         dispatch(setUser(data.user))
         dispatch(setCart(data.user.cart))
       }
+      return data
     })
-  }
+  }, [dispatch])
   useEffect(() => {
     getUser()
-  }, [])
+  }, [getUser])
 
   return (
    <div className={isDarkMode ? 'dark':'light'}>
